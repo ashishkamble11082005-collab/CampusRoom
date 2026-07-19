@@ -1069,18 +1069,261 @@ export const RoomDetailsScreen: React.FC<{
   );
 };
 
-// ================= 5. DYNAMIC MAP SCREEN =================
+// ================= 5. DYNAMIC GOOGLE MAPS SCREEN =================
 export const MapScreen: React.FC<{
   properties: Property[];
   onBack: () => void;
   onSelectProperty: (p: Property) => void;
 }> = ({ properties, onBack, onSelectProperty }) => {
+  const { apiFetch } = useAuth();
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  
+  // Selection states
   const [activePin, setActivePin] = useState<Property | null>(null);
+  const [activePOI, setActivePOI] = useState<any>(null);
+  const [selectedPOITheme, setSelectedPOITheme] = useState<'rooms' | 'colleges' | 'mess' | 'grocery' | 'atm' | 'bus' | 'railway'>('rooms');
+  
+  // SECURED MAPS KEY LOAD
+  useEffect(() => {
+    const fetchMapsKey = async () => {
+      try {
+        const res = await apiFetch('/properties/maps-key');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.key) {
+            loadMapsScript(data.key);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Failed secure key lookup:', err);
+      }
+      setGoogleMapsLoaded(false); // Fallback to simulated mapping interface
+    };
+    fetchMapsKey();
+  }, []);
 
-  // SVG simulated coordinate map
+  const loadMapsScript = (key: string) => {
+    if ((window as any).google) {
+      setGoogleMapsLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleMapsLoaded(true);
+    script.onerror = () => setGoogleMapsLoaded(false);
+    document.head.appendChild(script);
+  };
+
+  // Google Maps Instance hook
+  useEffect(() => {
+    if (googleMapsLoaded && mapRef.current && !mapInstance) {
+      const defaultCenter = { lat: 18.5631, lng: 73.9168 }; // Symbiosis Viman Nagar center
+      const google = (window as any).google;
+      const map = new google.maps.Map(mapRef.current, {
+        center: defaultCenter,
+        zoom: 15,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }]
+          }
+        ]
+      });
+      setMapInstance(map);
+    }
+  }, [googleMapsLoaded]);
+
+  const markersRef = useRef<any[]>([]);
+
+  // Map markers rendering loop
+  useEffect(() => {
+    if (!mapInstance) return;
+    const google = (window as any).google;
+
+    // Clear old markers
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    // 1. Plot property markers
+    properties.forEach((p) => {
+      const lat = p.location?.coordinates?.[1] || (18.5631 + (Math.random() - 0.5) * 0.01);
+      const lng = p.location?.coordinates?.[0] || (73.9168 + (Math.random() - 0.5) * 0.01);
+
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapInstance,
+        title: p.title,
+        label: {
+          text: `₹${Math.round(p.price / 1000)}k`,
+          color: '#ffffff',
+          fontWeight: '700',
+          fontSize: '11px'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 17,
+          fillColor: '#ff5a5f',
+          fillOpacity: 1.0,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
+        }
+      });
+
+      marker.addListener('click', () => {
+        setActivePin(p);
+        setActivePOI(null);
+        mapInstance.panTo({ lat, lng });
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    // 2. Plot POI markers
+    if (selectedPOITheme !== 'rooms') {
+      const pois = getPOIList(selectedPOITheme);
+      pois.forEach((poi) => {
+        const marker = new google.maps.Marker({
+          position: { lat: poi.lat, lng: poi.lng },
+          map: mapInstance,
+          title: poi.name,
+          label: {
+            text: poi.icon,
+            fontSize: '14px'
+          },
+          icon: {
+            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 6,
+            fillColor: '#0071e3',
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 1.5
+          }
+        });
+
+        marker.addListener('click', () => {
+          setActivePOI(poi);
+          setActivePin(null);
+          mapInstance.panTo({ lat: poi.lat, lng: poi.lng });
+        });
+
+        markersRef.current.push(marker);
+      });
+    }
+  }, [mapInstance, properties, selectedPOITheme]);
+
+  // Static Local POI Database Pune (fallback/live dual purpose)
+  const getPOIList = (theme: string) => {
+    switch (theme) {
+      case 'colleges':
+        return [
+          { id: 'c1', name: 'Symbiosis Viman Nagar Campus', lat: 18.5631, lng: 73.9168, icon: '🎓' },
+          { id: 'c2', name: 'FLAME University Viman Nagar Hub', lat: 18.5650, lng: 73.9110, icon: '🎓' },
+          { id: 'c3', name: 'Ness Wadia College Pune', lat: 18.5390, lng: 73.8820, icon: '🎓' }
+        ];
+      case 'mess':
+        return [
+          { id: 'm1', name: 'Annapurna Student Tiffin Mess', lat: 18.5645, lng: 73.9155, icon: '🍱' },
+          { id: 'm2', name: 'Sai Student Meals & PG Food', lat: 18.5618, lng: 73.9180, icon: '🍱' },
+          { id: 'm3', name: 'Viman Nagar Plaza Food Court', lat: 18.5670, lng: 73.9140, icon: '🍱' }
+        ];
+      case 'grocery':
+        return [
+          { id: 'g1', name: 'D-Mart Ready Viman Nagar', lat: 18.5655, lng: 73.9125, icon: '🛒' },
+          { id: 'g2', name: 'Reliance Smart Point Mini', lat: 18.5625, lng: 73.9195, icon: '🛒' }
+        ];
+      case 'atm':
+        return [
+          { id: 'a1', name: 'HDFC Bank ATM 24/7 Lobby', lat: 18.5620, lng: 73.9172, icon: '🏦' },
+          { id: 'a2', name: 'SBI ATM Viman Nagar Corner', lat: 18.5638, lng: 73.9162, icon: '🏦' }
+        ];
+      case 'bus':
+        return [
+          { id: 'b1', name: 'Viman Nagar Corner Bus Stop', lat: 18.5610, lng: 73.9160, icon: '🚌' },
+          { id: 'b2', name: 'Symbiosis College Bus Terminal', lat: 18.5630, lng: 73.9170, icon: '🚌' }
+        ];
+      case 'railway':
+        return [
+          { id: 'r1', name: 'Pune Junction Railway Station', lat: 18.5289, lng: 73.8744, icon: '🚆' },
+          { id: 'r2', name: 'Hadapsar Suburb Station', lat: 18.5085, lng: 73.9230, icon: '🚆' }
+        ];
+      default:
+        return [];
+    }
+  };
+
+  // Spherical Coordinates Transit Math
+  const calculateTransitMetrics = (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
+    const R = 6371; // Earth radius in km
+    const dLat = (toLat - fromLat) * Math.PI / 180;
+    const dLng = (toLng - fromLng) * Math.PI / 180;
+    
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(fromLat * Math.PI / 180) * Math.cos(toLat * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+              
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = R * c; // Distance in km
+    
+    const walkMin = Math.round(dist * 60 / 4.8); // 4.8 km/h speed
+    const driveMin = Math.round(dist * 60 / 30.0); // 30 km/h speed
+    
+    return {
+      distance: dist < 1 ? `${Math.round(dist * 1000)} meters` : `${dist.toFixed(2)} km`,
+      walkingTime: walkMin === 0 ? 'Under a minute' : `${walkMin} mins`,
+      drivingTime: driveMin === 0 ? 'Under a minute' : `${driveMin} mins`
+    };
+  };
+
+  // Find closest property context when clicking POIs
+  const getClosestPropertyDistance = (poiLat: number, poiLng: number) => {
+    if (properties.length === 0) return null;
+    let closest = properties[0];
+    let minDist = Infinity;
+    
+    properties.forEach((p) => {
+      const lat = p.location?.coordinates?.[1] || 18.5631;
+      const lng = p.location?.coordinates?.[0] || 73.9168;
+      const d = Math.hypot(lat - poiLat, lng - poiLng);
+      if (d < minDist) {
+        minDist = d;
+        closest = p;
+      }
+    });
+
+    const cLat = closest.location?.coordinates?.[1] || 18.5631;
+    const cLng = closest.location?.coordinates?.[0] || 73.9168;
+    
+    return {
+      property: closest,
+      metrics: calculateTransitMetrics(cLat, cLng, poiLat, poiLng)
+    };
+  };
+
+  const pillStyle = (theme: typeof selectedPOITheme): React.CSSProperties => ({
+    padding: '8px 14px',
+    fontSize: '12px',
+    fontWeight: 600,
+    borderRadius: '20px',
+    border: '1px solid var(--border-color)',
+    backgroundColor: selectedPOITheme === theme ? 'var(--brand-coral)' : 'var(--bg-surface)',
+    color: selectedPOITheme === theme ? '#ffffff' : 'var(--text-primary)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.2s'
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} className="animate-fade-in">
-      {/* Map Search Bar / Header */}
+      
+      {/* Header */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border-color-light)', backgroundColor: 'var(--bg-surface)' }}>
         <button onClick={onBack} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-primary)' }}>
           <ArrowLeft size={20} />
@@ -1088,136 +1331,116 @@ export const MapScreen: React.FC<{
         <span style={{ fontWeight: 700, fontSize: '16px' }}>Campus Map View</span>
       </div>
 
-      {/* SVG Vector Map Area */}
-      <div style={{ flex: 1, backgroundColor: '#e4f2e6', position: 'relative', overflow: 'hidden' }}>
-        {/* Custom background grids simulating roads/rivers/parks */}
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-          {/* River */}
-          <path d="M-10,120 Q 200,60 500,220" fill="none" stroke="#a5c9eb" strokeWidth="24" opacity="0.6" />
-          {/* Main Road */}
-          <path d="M80,-20 L 80,600" fill="none" stroke="#ffffff" strokeWidth="16" opacity="0.8" />
-          <path d="M-20,180 L 600,180" fill="none" stroke="#ffffff" strokeWidth="12" opacity="0.8" />
-          {/* Secondary Roads */}
-          <line x1="30" y1="0" x2="30" y2="600" stroke="#ffffff" strokeWidth="6" strokeDasharray="5" opacity="0.5" />
-          <line x1="280" y1="0" x2="280" y2="600" stroke="#ffffff" strokeWidth="6" strokeDasharray="5" opacity="0.5" />
-        </svg>
+      {/* POI Category filter tabs row */}
+      <div style={{ display: 'flex', gap: '8px', padding: '10px 16px', overflowX: 'auto', backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border-color-light)' }}>
+        <button onClick={() => setSelectedPOITheme('rooms')} style={pillStyle('rooms')}>🏠 Rooms</button>
+        <button onClick={() => setSelectedPOITheme('colleges')} style={pillStyle('colleges')}>🎓 Colleges</button>
+        <button onClick={() => setSelectedPOITheme('mess')} style={pillStyle('mess')}>🍱 Mess / Food</button>
+        <button onClick={() => setSelectedPOITheme('grocery')} style={pillStyle('grocery')}>🛒 Grocery</button>
+        <button onClick={() => setSelectedPOITheme('atm')} style={pillStyle('atm')}>🏦 ATM</button>
+        <button onClick={() => setSelectedPOITheme('bus')} style={pillStyle('bus')}>🚌 Bus Stop</button>
+        <button onClick={() => setSelectedPOITheme('railway')} style={pillStyle('railway')}>🚆 Railway Station</button>
+      </div>
 
-        {/* College Campus Hub Anchor Marker */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            zIndex: 10
-          }}
-        >
-          <div
-            style={{
-              padding: '6px 12px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--brand-blue)',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 700,
-              boxShadow: '0 4px 12px rgba(0, 113, 227, 0.4)'
-            }}
-          >
-            🎓 Symbiosis Campus
-          </div>
-          <div style={{ width: '4px', height: '12px', backgroundColor: 'var(--brand-blue)' }} />
-          {/* Range rings */}
-          <div
-            style={{
-              position: 'absolute',
-              width: '180px',
-              height: '180px',
-              borderRadius: '50%',
-              border: '2px dashed rgba(0, 113, 227, 0.25)',
-              transform: 'translateY(-75px)',
-              pointerEvents: 'none'
-            }}
-          />
-        </div>
+      {/* Maps Container panel */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#e4f2e6' }}>
+        
+        {googleMapsLoaded ? (
+          <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+        ) : (
+          /* High Fidelity Vector Fallback Map */
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+              <path d="M-10,120 Q 200,60 500,220" fill="none" stroke="#a5c9eb" strokeWidth="24" opacity="0.6" />
+              <path d="M80,-20 L 80,600" fill="none" stroke="#ffffff" strokeWidth="16" opacity="0.8" />
+              <path d="M-20,180 L 600,180" fill="none" stroke="#ffffff" strokeWidth="12" opacity="0.8" />
+              <line x1="30" y1="0" x2="30" y2="600" stroke="#ffffff" strokeWidth="6" strokeDasharray="5" opacity="0.5" />
+              <line x1="280" y1="0" x2="280" y2="600" stroke="#ffffff" strokeWidth="6" strokeDasharray="5" opacity="0.5" />
+            </svg>
 
-        {/* Map Pins */}
-        {properties.map((p) => {
-          const isActive = activePin?.id === p.id;
-          return (
-            <button
-              key={p.id}
-              onClick={() => setActivePin(p)}
-              style={{
-                position: 'absolute',
-                left: `${p.coordinates?.x ?? 40}%`,
-                top: `${p.coordinates?.y ?? 40}%`,
-                transform: 'translate(-50%, -50%)',
-                border: 'none',
-                background: 'transparent',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                cursor: 'pointer',
-                zIndex: isActive ? 20 : 15,
-                transition: 'scale 0.2s ease'
-              }}
-            >
-              <div
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '10px',
-                  backgroundColor: isActive ? 'var(--brand-coral)' : 'var(--bg-surface)',
-                  color: isActive ? '#ffffff' : 'var(--text-primary)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  border: `1.5px solid ${isActive ? '#ffffff' : 'var(--brand-coral)'}`,
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                ₹{Math.round(p.price / 1000)}k
+            {/* Symbiosis Landmark Pin */}
+            <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: 'var(--brand-blue)', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>
+                🎓 Symbiosis Campus
               </div>
-              <div
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: '5px solid transparent',
-                  borderRight: '5px solid transparent',
-                  borderTop: `6px solid ${isActive ? 'var(--brand-coral)' : 'var(--bg-surface)'}`,
-                  marginTop: '-1px'
-                }}
-              />
-            </button>
-          );
-        })}
+              <div style={{ width: '4px', height: '12px', backgroundColor: 'var(--brand-blue)' }} />
+            </div>
 
-        {/* Pin Hover Overlay card */}
+            {/* Simulated Property Pins */}
+            {properties.map((p, idx) => {
+              const isActive = activePin?.id === p.id;
+              // Spread coordinates across the mock layout grid
+              const leftOffset = 25 + (idx * 20) % 60;
+              const topOffset = 20 + (idx * 15) % 65;
+
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setActivePin(p);
+                    setActivePOI(null);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${leftOffset}%`,
+                    top: `${topOffset}%`,
+                    transform: 'translate(-50%, -50%)',
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    zIndex: isActive ? 20 : 15
+                  }}
+                >
+                  <div style={{ padding: '4px 8px', borderRadius: '10px', backgroundColor: isActive ? 'var(--brand-coral)' : 'var(--bg-surface)', color: isActive ? '#ffffff' : 'var(--text-primary)', fontSize: '11px', fontWeight: 700, border: `1.5px solid ${isActive ? '#ffffff' : 'var(--brand-coral)'}`, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                    ₹{Math.round(p.price / 1000)}k
+                  </div>
+                  <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${isActive ? 'var(--brand-coral)' : 'var(--bg-surface)'}`, margin: '-1px auto 0' }} />
+                </button>
+              );
+            })}
+
+            {/* Simulated POIs pins */}
+            {selectedPOITheme !== 'rooms' && getPOIList(selectedPOITheme).map((poi, idx) => {
+              const isActive = activePOI?.id === poi.id;
+              const leftOffset = 35 + (idx * 15) % 50;
+              const topOffset = 30 + (idx * 20) % 55;
+
+              return (
+                <button
+                  key={poi.id}
+                  onClick={() => {
+                    setActivePOI(poi);
+                    setActivePin(null);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${leftOffset}%`,
+                    top: `${topOffset}%`,
+                    transform: 'translate(-50%, -50%)',
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    zIndex: isActive ? 20 : 15
+                  }}
+                >
+                  <div style={{ padding: '6px 10px', borderRadius: '20px', backgroundColor: isActive ? 'var(--brand-blue)' : 'var(--bg-surface)', color: isActive ? '#ffffff' : 'var(--brand-blue)', fontSize: '12px', fontWeight: 700, border: '1.5px solid var(--brand-blue)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>{poi.icon}</span>
+                    <span style={{ fontSize: '10px' }}>{poi.name.split(' ')[0]}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Dynamic Detail Drawer (Property selected) */}
         {activePin && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '16px',
-              right: '16px',
-              backgroundColor: 'var(--bg-surface)',
-              borderRadius: '16px',
-              padding: '12px',
-              display: 'flex',
-              gap: '12px',
-              boxShadow: 'var(--shadow-medium)',
-              border: '1px solid var(--border-color-light)',
-              zIndex: 30
-            }}
-            className="animate-slide-up"
-          >
+          <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', backgroundColor: 'var(--bg-surface)', borderRadius: '16px', padding: '12px', display: 'flex', gap: '12px', boxShadow: 'var(--shadow-medium)', border: '1px solid var(--border-color-light)', zIndex: 30 }} className="animate-slide-up">
             <img src={activePin.image} alt="" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px' }} />
             <div style={{ flex: 1, textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <h4 style={{ fontSize: '13px', fontWeight: 700 }}>{activePin.title}</h4>
-                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{activePin.distance} • {activePin.location}</p>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{activePin.distanceText || activePin.distance} • {activePin.location}</p>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--brand-coral)' }}>₹{activePin.price.toLocaleString()}</span>
@@ -1229,6 +1452,49 @@ export const MapScreen: React.FC<{
             </button>
           </div>
         )}
+
+        {/* Dynamic Detail Drawer (POI selected - Calculates Walking/Driving matrices) */}
+        {activePOI && (() => {
+          const closest = getClosestPropertyDistance(activePOI.lat, activePOI.lng);
+          return (
+            <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', backgroundColor: 'var(--bg-surface)', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'var(--shadow-medium)', border: '1px solid var(--border-color-light)', zIndex: 30, textAlign: 'left' }} className="animate-slide-up">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: '20px' }}>{activePOI.icon}</span>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginTop: '4px' }}>{activePOI.name}</h4>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Latitude: {activePOI.lat} • Longitude: {activePOI.lng}</p>
+                </div>
+                <button onClick={() => setActivePOI(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                  <X size={16} />
+                </button>
+              </div>
+              
+              {closest && (
+                <div style={{ borderTop: '1px solid var(--border-color-light)', paddingTop: '10px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    Transit estimations to closest listing: **{closest.property.title}**
+                  </span>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Distance</span>
+                      <p style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>{closest.metrics.distance}</p>
+                    </div>
+                    <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>🚶 Walk</span>
+                      <p style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px', color: 'var(--brand-coral)' }}>{closest.metrics.walkingTime}</p>
+                    </div>
+                    <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--bg-primary)', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>🚗 Drive</span>
+                      <p style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px', color: 'var(--brand-blue)' }}>{closest.metrics.drivingTime}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );

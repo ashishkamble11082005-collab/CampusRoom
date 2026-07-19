@@ -9,20 +9,21 @@ const router = Router();
 // ================= SEED LISTINGS DATA =================
 router.post('/seed', async (req: Request, res: Response) => {
   try {
-    const count = await Property.countDocuments();
-    if (count > 0) {
-      return res.status(200).json({ success: true, message: 'Database already has properties seeded', count });
-    }
+    // Clear properties to ensure fresh seeding with all new fields
+    await Property.deleteMany({});
 
-    // Seed data corresponding to the frontend mock data
     const mockSeed = [
       {
-        ownerId: '60d5ec4b868e8215881e1a5b', // Simulated Landlord ID
+        ownerId: '60d5ec4b868e8215881e1a5b',
         ownerName: 'Ramesh Shah',
         ownerPhone: '+919876543210',
         title: 'Premium Boys PG near Symbiosis',
         description: 'Single and double sharing rooms with high-speed Wi-Fi, laundry service, and 3 hot meals daily. Walking distance from Symbiosis Viman Nagar campus.',
         price: 18500,
+        deposit: 37000,
+        walkingTimeText: '5 mins walk',
+        rules: ['No smoking', 'No loud music after 10 PM', 'Gate closes at 10:30 PM'],
+        tour360Url: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1600&q=80',
         collegeName: 'Symbiosis Pune',
         distanceText: '0.4 km',
         location: { type: 'Point', coordinates: [73.9168, 18.5631] },
@@ -42,6 +43,10 @@ router.post('/seed', async (req: Request, res: Response) => {
         title: 'Co-ed Shared Student Apartment',
         description: 'Fully furnished 3 BHK flat. One master bedroom available with private balcony. Friendly roommates from FLAME and Symbiosis.',
         price: 12000,
+        deposit: 24000,
+        walkingTimeText: '15 mins walk',
+        rules: ['Pre-payment before 5th of each month', 'Keep room clean', 'No loud music after 11 PM'],
+        tour360Url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80',
         collegeName: 'Symbiosis Pune',
         distanceText: '1.2 km',
         location: { type: 'Point', coordinates: [73.9112, 18.5678] },
@@ -61,6 +66,10 @@ router.post('/seed', async (req: Request, res: Response) => {
         title: 'Girls Luxury Hostel (Viman Nagar)',
         description: 'High-security hostel for female students. Includes biometrics entry, CCTV, standard power backups, and daily housekeeping.',
         price: 22000,
+        deposit: 44000,
+        walkingTimeText: '3 mins walk',
+        rules: ['No opposite gender guests overnight', 'No smoking', 'Pets not allowed', 'Gate closes at 10 PM'],
+        tour360Url: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1600&q=80',
         collegeName: 'Symbiosis Pune',
         distanceText: '0.2 km',
         location: { type: 'Point', coordinates: [73.9185, 18.5615] },
@@ -80,6 +89,10 @@ router.post('/seed', async (req: Request, res: Response) => {
         title: 'Affordable Double Sharing Room',
         description: 'Clean room inside a quiet residential society. Best for budget-conscious students. 10 minutes auto ride from main colleges.',
         price: 8500,
+        deposit: 17000,
+        walkingTimeText: '25 mins walk',
+        rules: ['No loud music', 'Keep common areas clean', 'Inquire before inviting guests'],
+        tour360Url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80',
         collegeName: 'Symbiosis Pune',
         distanceText: '2.5 km',
         location: { type: 'Point', coordinates: [73.8999, 18.5555] },
@@ -237,6 +250,18 @@ router.get('/:id/reviews', async (req: Request, res: Response) => {
   try {
     const reviews = await Review.find({ propertyId: req.params.id }).sort({ createdAt: -1 });
     return res.status(200).json({ success: true, count: reviews.length, reviews });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ================= GET SECURED MAPS KEY =================
+router.get('/maps-key', protect, async (req: Request, res: Response) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      key: process.env.GOOGLE_MAPS_API_KEY || ''
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
