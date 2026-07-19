@@ -31,7 +31,7 @@ router.get('/profile', protect, async (req: AuthRequest, res: Response) => {
 // ================= UPDATE STUDENT PROFILE =================
 router.put('/profile', protect, async (req: AuthRequest, res: Response) => {
   try {
-    const { collegeName, course, yearOfStudy, bio, lifestylePreferences } = req.body;
+    const { collegeName, course, yearOfStudy, bio, avatar, lifestylePreferences } = req.body;
 
     const updatedProfile = await StudentProfile.findOneAndUpdate(
       { userId: req.user?.id },
@@ -40,6 +40,7 @@ router.put('/profile', protect, async (req: AuthRequest, res: Response) => {
         course,
         yearOfStudy,
         bio,
+        avatar,
         lifestylePreferences
       },
       { new: true, upsert: true }

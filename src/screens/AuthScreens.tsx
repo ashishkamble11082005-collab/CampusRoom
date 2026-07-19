@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, Avatar, Badge } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -511,9 +511,11 @@ export const RegisterScreen: React.FC<{
 
 // ================= 4. STUDENT PROFILE SCREEN =================
 export const StudentProfileScreen: React.FC = () => {
-  const { user } = useAuth();
+  const { user, apiFetch } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [studentInfo, setStudentInfo] = useState({
     name: user?.name || 'Kabir Malhotra',
     college: 'Symbiosis Pune',
@@ -522,15 +524,93 @@ export const StudentProfileScreen: React.FC = () => {
     email: user?.email || 'kabir.des@symbiosis.edu',
     status: user?.isEmailVerified ? 'Verified Student' : 'Unverified Email',
     bio: 'Product design student. Morning worker who appreciates tidy shared spaces. Seeking a quiet flatmate in Kothrud or Viman Nagar.',
-    sleep: 'Early Bird',
-    cleanliness: 'Neat Freak',
-    food: 'Veg Only',
-    noise: 'Quiet Study',
+    avatar: '',
+    sleep: 'Flexible',
+    cleanliness: 'Moderate',
+    food: 'Non-Veg Allowed',
+    noise: 'No preference',
     guests: 'Weekends Only'
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const res = await apiFetch('/student/profile');
+      if (res.ok) {
+        const data = await res.json();
+        const p = data.profile;
+        if (p) {
+          setStudentInfo({
+            name: p.userId?.name || user?.name || 'Student User',
+            college: p.collegeName || 'Symbiosis Pune',
+            course: p.course || '',
+            year: p.yearOfStudy || '1st Year',
+            email: p.userId?.email || user?.email || '',
+            status: user?.isEmailVerified ? 'Verified Student' : 'Unverified Email',
+            bio: p.bio || '',
+            avatar: p.avatar || '',
+            sleep: p.lifestylePreferences?.sleep || 'Flexible',
+            cleanliness: p.lifestylePreferences?.cleanliness || 'Moderate',
+            food: p.lifestylePreferences?.food || 'Non-Veg Allowed',
+            noise: p.lifestylePreferences?.noise || 'No preference',
+            guests: p.lifestylePreferences?.guests || 'Weekends Only'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [user]);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setStudentInfo(prev => ({
+          ...prev,
+          avatar: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      const res = await apiFetch('/student/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          collegeName: studentInfo.college,
+          course: studentInfo.course,
+          yearOfStudy: studentInfo.year,
+          bio: studentInfo.bio,
+          avatar: studentInfo.avatar,
+          lifestylePreferences: {
+            sleep: studentInfo.sleep,
+            cleanliness: studentInfo.cleanliness,
+            food: studentInfo.food,
+            noise: studentInfo.noise,
+            guests: studentInfo.guests
+          }
+        })
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        loadProfile();
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formSectionStyle: React.CSSProperties = {
@@ -560,7 +640,46 @@ export const StudentProfileScreen: React.FC = () => {
           position: 'relative'
         }}
       >
-        <Avatar name={studentInfo.name} size="xl" />
+        {/* Clickable avatar area */}
+        <div 
+          onClick={() => isEditing && fileInputRef.current?.click()} 
+          style={{ 
+            position: 'relative', 
+            cursor: isEditing ? 'pointer' : 'default',
+            borderRadius: '50%'
+          }}
+        >
+          <Avatar src={studentInfo.avatar} name={studentInfo.name} size="xl" />
+          {isEditing && (
+            <div 
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 600
+              }}
+            >
+              Upload
+            </div>
+          )}
+        </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handlePhotoChange} 
+          accept="image/*" 
+          style={{ display: 'none' }} 
+        />
+
         <h3 style={{ fontSize: '20px', fontWeight: 700, marginTop: '12px' }}>{studentInfo.name}</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '4px 0 8px' }}>
           {studentInfo.college} • {studentInfo.course}
@@ -581,7 +700,7 @@ export const StudentProfileScreen: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>About & Biography</h3>
           {isEditing ? (
-            <Button size="sm" onClick={handleSave}>Save</Button>
+            <Button size="sm" onClick={handleSave} loading={loading}>Save</Button>
           ) : (
             <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>Edit</Button>
           )}
@@ -601,11 +720,17 @@ export const StudentProfileScreen: React.FC = () => {
               value={studentInfo.course}
               onChange={(e) => setStudentInfo({ ...studentInfo, course: e.target.value })}
             />
+            <Input
+              label="College Name"
+              type="text"
+              value={studentInfo.college}
+              onChange={(e) => setStudentInfo({ ...studentInfo, college: e.target.value })}
+            />
           </div>
         ) : (
           <div>
             <p style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>
-              {studentInfo.bio}
+              {studentInfo.bio || "No biography added yet. Click Edit to share something about yourself!"}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '14px', borderTop: '1px solid var(--border-color-light)', paddingTop: '12px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -643,7 +768,8 @@ export const StudentProfileScreen: React.FC = () => {
                     borderRadius: '6px',
                     border: '1px solid var(--border-color)',
                     fontSize: '12px',
-                    backgroundColor: 'var(--bg-surface)'
+                    backgroundColor: 'var(--bg-surface)',
+                    color: 'var(--text-primary)'
                   }}
                 >
                   {item.opts.map((o) => (

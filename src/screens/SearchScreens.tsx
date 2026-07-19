@@ -36,10 +36,31 @@ export const HomeScreen: React.FC<{
 }> = ({ properties, onSelectProperty, onNavigateToSearch, onNavigateToFavorites }) => {
   const [searchVal, setSearchVal] = useState('');
   const [selectedCollege, setSelectedCollege] = useState('Symbiosis Pune');
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const ids = localStorage.getItem('recentlyViewed');
+    if (ids) {
+      setRecentIds(JSON.parse(ids));
+    }
+  }, []);
+
+  const handleSelectCard = (p: Property) => {
+    const id = p._id || p.id;
+    const existing = localStorage.getItem('recentlyViewed');
+    let list: string[] = existing ? JSON.parse(existing) : [];
+    list = [id, ...list.filter(x => x !== id)].slice(0, 5);
+    localStorage.setItem('recentlyViewed', JSON.stringify(list));
+    onSelectProperty(p);
+  };
 
   const filteredFeatured = properties.filter(
     (p) => p.college === selectedCollege || selectedCollege === 'All'
   );
+
+  const recentProperties = recentIds
+    .map(id => properties.find(p => (p._id || p.id) === id))
+    .filter((p): p is Property => !!p);
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }} className="animate-fade-in">
@@ -117,7 +138,38 @@ export const HomeScreen: React.FC<{
         </div>
       </div>
 
-      {/* Featured Properties Grid */}
+      {/* Recently Viewed Strip */}
+      {recentProperties.length > 0 && (
+        <div style={{ textAlign: 'left' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>Recently Viewed</h3>
+          <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
+            {recentProperties.map((p) => (
+              <div 
+                key={p._id || p.id}
+                onClick={() => handleSelectCard(p)}
+                style={{
+                  flexShrink: 0,
+                  width: '160px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color-light)',
+                  backgroundColor: 'var(--bg-surface)',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-soft)'
+                }}
+              >
+                <img src={p.image} alt={p.title} style={{ width: '100%', height: '80px', objectFit: 'cover' }} />
+                <div style={{ padding: '8px', textAlign: 'left' }}>
+                  <h4 style={{ fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</h4>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-coral)', display: 'block', marginTop: '2px' }}>₹{p.price.toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Accommodations Grid */}
       <div style={{ textAlign: 'left' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Featured Accommodations</h3>
@@ -133,24 +185,22 @@ export const HomeScreen: React.FC<{
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
             {filteredFeatured.slice(0, 4).map((p) => (
               <PropertyCard
-                key={p.id}
-                id={p.id}
+                key={p._id || p.id}
+                id={p._id || p.id}
                 title={p.title}
                 location={p.location}
                 price={p.price}
-                rating={p.rating}
-                reviewsCount={p.reviewsCount}
                 image={p.image}
+                rating={p.averageRating || p.rating}
+                reviewsCount={p.reviewsCount}
                 isVerified={p.isVerified}
-                distance={p.distance}
-                onClick={() => onSelectProperty(p)}
+                distance={p.distanceText || p.distance}
+                onClick={() => handleSelectCard(p)}
               />
             ))}
           </div>
         ) : (
-          <div style={{ padding: '32px', textAlign: 'center', backgroundColor: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color-light)' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>No listings nearby the selected college.</p>
-          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center', padding: '24px 0' }}>No featured properties for this hub.</p>
         )}
       </div>
 

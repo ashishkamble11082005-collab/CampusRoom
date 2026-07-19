@@ -6,6 +6,7 @@ export interface IStudentProfile extends Document {
   course: string;
   yearOfStudy: string;
   bio: string;
+  avatar?: string;
   lifestylePreferences: {
     sleep: 'Early Bird' | 'Night Owl' | 'Flexible';
     cleanliness: 'Neat Freak' | 'Moderate' | 'Relaxed';
@@ -18,6 +19,7 @@ export interface IStudentProfile extends Document {
 
 const StudentProfileSchema = new Schema<IStudentProfile>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  avatar: { type: String, default: '' },
   collegeName: { type: String, required: true, default: 'Symbiosis Pune' },
   course: { type: String, default: '' },
   yearOfStudy: { type: String, default: '1st Year' },
