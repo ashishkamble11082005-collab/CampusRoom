@@ -1,0 +1,180 @@
+/* App presentation dashboard layout rules */
+
+#app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--sans-font);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Presentation Sidebar controls */
+#control-deck {
+  width: 380px;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-color-light);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  #control-deck {
+    display: none; /* Hide presenter sidebar on mobile screens, displaying full app */
+  }
+}
+
+/* Mobile simulator wrap container */
+#preview-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: var(--bg-primary);
+  height: 100vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  #preview-stage {
+    padding: 0;
+    height: 100vh;
+    width: 100%;
+  }
+}
+
+/* High fidelity phone frame */
+.phone-frame {
+  width: 375px;
+  height: 812px;
+  border-radius: 40px;
+  background-color: var(--bg-surface);
+  border: 12px solid #1c1c1e;
+  box-shadow: var(--shadow-medium);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.dark .phone-frame {
+  border-color: #2c2c2e;
+}
+
+@media (max-width: 900px) {
+  .phone-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+/* Phone Status Bar Mock */
+.phone-status-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  user-select: none;
+  z-index: 100;
+}
+
+/* iPhone Dynamic Island Notch */
+.phone-notch {
+  width: 110px;
+  height: 28px;
+  background-color: #000000;
+  border-radius: 15px;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+}
+
+@media (max-width: 900px) {
+  .phone-notch {
+    display: none;
+  }
+}
+
+/* Phone screen content viewable area */
+.phone-screen-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  background-color: var(--bg-primary);
+}
+
+/* Phone navigation tab layout */
+.phone-navbar {
+  height: 64px;
+  border-top: 1px solid var(--border-color-light);
+  background-color: var(--bg-surface);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: 8px;
+  z-index: 100;
+}
+
+.navbar-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+  transition: color 0.15s;
+  flex: 1;
+}
+
+.navbar-tab.active {
+  color: var(--brand-coral);
+}
+
+/* Custom list layout sidebar items */
+.sidebar-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.sidebar-list-item:hover {
+  background-color: var(--border-color-light);
+}
+
+.sidebar-list-item.active {
+  background-color: rgba(255, 56, 92, 0.08);
+  color: var(--brand-coral);
+  font-weight: 600;
+}
