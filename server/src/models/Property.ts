@@ -19,6 +19,10 @@ export interface IProperty extends Document {
   amenities: string[];
   images: string[];
   videoUrl?: string;
+  tour360Url?: string;
+  deposit: number;
+  walkingTimeText: string;
+  rules: string[];
   callsCount: number;
   isVerified: boolean;
   averageRating: number;
@@ -46,6 +50,10 @@ const PropertySchema = new Schema<IProperty>({
   amenities: [{ type: String }],
   images: [{ type: String }],
   videoUrl: { type: String, default: '' },
+  tour360Url: { type: String, default: '' },
+  deposit: { type: Number, default: 0 },
+  walkingTimeText: { type: String, default: '' },
+  rules: [{ type: String }],
   callsCount: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false, index: true },
   averageRating: { type: Number, default: 0.0 },

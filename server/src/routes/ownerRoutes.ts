@@ -67,7 +67,8 @@ router.post('/properties', protect, async (req: AuthRequest, res: Response) => {
   try {
     const { 
       title, description, price, collegeName, distanceText, 
-      type, sharing, gender, amenities, images, videoUrl 
+      type, sharing, gender, amenities, images, videoUrl,
+      deposit, walkingTimeText, rules, tour360Url
     } = req.body;
 
     if (req.user?.role !== 'Landlord' && req.user?.role !== 'Admin') {
@@ -94,6 +95,10 @@ router.post('/properties', protect, async (req: AuthRequest, res: Response) => {
       amenities: amenities || [],
       images: images || [],
       videoUrl: videoUrl || '',
+      tour360Url: tour360Url || '',
+      deposit: deposit || 0,
+      walkingTimeText: walkingTimeText || '',
+      rules: rules || [],
       isVerified: false
     });
 
@@ -111,7 +116,8 @@ router.put('/properties/:id', protect, async (req: AuthRequest, res: Response) =
     const { id } = req.params;
     const { 
       title, description, price, collegeName, distanceText, 
-      type, sharing, gender, amenities, images, videoUrl 
+      type, sharing, gender, amenities, images, videoUrl,
+      deposit, walkingTimeText, rules, tour360Url
     } = req.body;
 
     const property = await Property.findOne({ _id: id, ownerId: req.user?.id });
@@ -132,7 +138,11 @@ router.put('/properties/:id', protect, async (req: AuthRequest, res: Response) =
         gender,
         amenities,
         images,
-        videoUrl
+        videoUrl,
+        tour360Url,
+        deposit,
+        walkingTimeText,
+        rules
       },
       { new: true }
     );

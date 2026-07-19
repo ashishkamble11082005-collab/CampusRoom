@@ -26,6 +26,11 @@ export interface Property {
   ownerAvatar?: string;
   description: string;
   coordinates: { x: number; y: number }; // Simulated map layout relative coordinates (0-100)
+  deposit?: number;
+  walkingTimeText?: string;
+  rules?: string[];
+  tour360Url?: string;
+  videoUrl?: string;
 }
 
 export interface RoommateProfile {

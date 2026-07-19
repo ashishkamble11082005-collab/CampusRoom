@@ -425,29 +425,42 @@ export const AddRoomScreen: React.FC<{
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [price, setPrice] = useState(12000);
+  const [deposit, setDeposit] = useState(24000);
   const [distance, setDistance] = useState('0.5 km');
+  const [walkingTimeText, setWalkingTimeText] = useState('6 mins walk');
   const [college, setCollege] = useState('Symbiosis Pune');
   const [type, setType] = useState<'PG' | 'Hostel' | 'Flat' | 'Room'>('PG');
   const [sharing, setSharing] = useState<'Single' | 'Double' | 'Triple'>('Double');
   const [gender, setGender] = useState<'Boys only' | 'Girls only' | 'Co-ed'>('Boys only');
   const [description, setDescription] = useState('');
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [rules, setRules] = useState<string[]>(['No smoking', 'No loud music after 10 PM']);
   
   // Media states
   const imageUrl = 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80';
   const [base64Images, setBase64Images] = useState<string[]>([]);
   const [base64Video, setBase64Video] = useState<string>('');
+  const [base64Tour360, setBase64Tour360] = useState<string>('');
   
   const [loading, setLoading] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const tour360InputRef = useRef<HTMLInputElement>(null);
 
   const toggleAmenity = (a: string) => {
     if (amenities.includes(a)) {
       setAmenities(amenities.filter(x => x !== a));
     } else {
       setAmenities([...amenities, a]);
+    }
+  };
+
+  const toggleRule = (r: string) => {
+    if (rules.includes(r)) {
+      setRules(rules.filter(x => x !== r));
+    } else {
+      setRules([...rules, r]);
     }
   };
 
@@ -459,7 +472,6 @@ export const AddRoomScreen: React.FC<{
     if (step > 1) setStep(step - 1);
   };
 
-  // Convert image to base64
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -473,13 +485,23 @@ export const AddRoomScreen: React.FC<{
     }
   };
 
-  // Convert video to base64
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setBase64Video(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleTour360Upload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBase64Tour360(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -502,7 +524,11 @@ export const AddRoomScreen: React.FC<{
         gender,
         amenities,
         images: base64Images.length > 0 ? base64Images : [imageUrl],
-        videoUrl: base64Video
+        videoUrl: base64Video,
+        tour360Url: base64Tour360,
+        deposit,
+        walkingTimeText,
+        rules
       };
 
       const res = await apiFetch('/owner/properties', {
@@ -511,7 +537,7 @@ export const AddRoomScreen: React.FC<{
       });
 
       if (res.ok) {
-        onCancel(); // Return to dashboard
+        onCancel();
       }
     } catch (err) {
       console.error('Failed to submit listing:', err);
@@ -529,7 +555,6 @@ export const AddRoomScreen: React.FC<{
         <h2 style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'Outfit' }}>List Accommodation</h2>
       </div>
 
-      {/* Step indicator bubbles */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', margin: '8px 0' }}>
         {[1, 2, 3].map((s) => (
           <div
@@ -562,7 +587,12 @@ export const AddRoomScreen: React.FC<{
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input label="Monthly Rent (INR)" type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} required />
+              <Input label="Security Deposit (INR)" type="number" value={deposit} onChange={(e) => setDeposit(Number(e.target.value))} required />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Input label="Transit Distance" value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="e.g. 0.8 km" required />
+              <Input label="Walking Time" value={walkingTimeText} onChange={(e) => setWalkingTimeText(e.target.value)} placeholder="e.g. 10 mins walk" required />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -578,7 +608,7 @@ export const AddRoomScreen: React.FC<{
 
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }} className="animate-fade-in">
-            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Step 2: Room Configurations</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Step 2: Configurations & Rules</h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -614,6 +644,18 @@ export const AddRoomScreen: React.FC<{
                 ))}
               </div>
             </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--border-color-light)', paddingTop: '10px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>House Rules</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                {['No smoking', 'No loud music after 10 PM', 'No opposite gender guests overnight', 'Pets not allowed', 'No alcohol allowed'].map((r) => (
+                  <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={rules.includes(r)} onChange={() => toggleRule(r)} style={{ accentColor: 'var(--brand-coral)' }} />
+                    {r}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -625,9 +667,9 @@ export const AddRoomScreen: React.FC<{
             {/* Base64 Images Uploader */}
             <div 
               onClick={() => imageInputRef.current?.click()}
-              style={{ border: '2px dashed var(--border-color)', padding: '20px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-primary)' }}
+              style={{ border: '2px dashed var(--border-color)', padding: '16px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-primary)' }}
             >
-              <Upload size={24} color="var(--text-secondary)" style={{ margin: '0 auto 8px' }} />
+              <Upload size={20} color="var(--text-secondary)" style={{ margin: '0 auto 6px' }} />
               <p style={{ fontSize: '12px', fontWeight: 600 }}>Upload Room Images</p>
               <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>({base64Images.length} images added)</span>
             </div>
@@ -643,9 +685,9 @@ export const AddRoomScreen: React.FC<{
             {/* Base64 Video Uploader */}
             <div 
               onClick={() => videoInputRef.current?.click()}
-              style={{ border: '2px dashed var(--border-color)', padding: '20px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-primary)' }}
+              style={{ border: '2px dashed var(--border-color)', padding: '16px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-primary)' }}
             >
-              <PlayCircle size={24} color="var(--text-secondary)" style={{ margin: '0 auto 8px' }} />
+              <PlayCircle size={20} color="var(--text-secondary)" style={{ margin: '0 auto 6px' }} />
               <p style={{ fontSize: '12px', fontWeight: 600 }}>Upload Video Walkthrough</p>
               <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                 {base64Video ? 'Walkthrough Video loaded' : 'Upload short 3-second tour'}
@@ -656,6 +698,25 @@ export const AddRoomScreen: React.FC<{
               accept="video/*" 
               ref={videoInputRef} 
               onChange={handleVideoUpload} 
+              style={{ display: 'none' }} 
+            />
+
+            {/* Base64 360 Panorama Uploader */}
+            <div 
+              onClick={() => tour360InputRef.current?.click()}
+              style={{ border: '2px dashed var(--border-color)', padding: '16px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', backgroundColor: 'var(--bg-primary)' }}
+            >
+              <Building size={20} color="var(--text-secondary)" style={{ margin: '0 auto 6px' }} />
+              <p style={{ fontSize: '12px', fontWeight: 600 }}>Upload 360° Panoramic Photo</p>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                {base64Tour360 ? '360° Panoramic Tour loaded' : 'Upload landscape layout backdrop'}
+              </span>
+            </div>
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={tour360InputRef} 
+              onChange={handleTour360Upload} 
               style={{ display: 'none' }} 
             />
           </div>
@@ -689,8 +750,20 @@ export const EditRoomScreen: React.FC<{
   const [title, setTitle] = useState(property.title);
   const [location, setLocation] = useState(property.location);
   const [price, setPrice] = useState(property.price);
+  const [deposit, setDeposit] = useState(property.deposit || (property.price * 2));
+  const [distance, setDistance] = useState(property.distanceText || property.distance);
+  const [walkingTimeText, setWalkingTimeText] = useState(property.walkingTimeText || '5 mins walk');
   const [description, setDescription] = useState(property.description || '');
+  const [rules, setRules] = useState<string[]>(property.rules || []);
   const [loading, setLoading] = useState(false);
+
+  const toggleRule = (r: string) => {
+    if (rules.includes(r)) {
+      setRules(rules.filter(x => x !== r));
+    } else {
+      setRules([...rules, r]);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -704,7 +777,11 @@ export const EditRoomScreen: React.FC<{
           title,
           location,
           price,
-          description
+          deposit,
+          distanceText: distance,
+          walkingTimeText,
+          description,
+          rules
         })
       });
       if (res.ok) {
@@ -729,8 +806,30 @@ export const EditRoomScreen: React.FC<{
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'var(--bg-surface)', padding: '20px', borderRadius: '20px', border: '1px solid var(--border-color-light)' }}>
         <Input label="Listing Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <Input label="Location" value={location} onChange={(e) => setLocation(e.target.value)} required />
-        <Input label="Monthly Rent (INR)" type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} required />
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <Input label="Monthly Rent (INR)" type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} required />
+          <Input label="Security Deposit (INR)" type="number" value={deposit} onChange={(e) => setDeposit(Number(e.target.value))} required />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <Input label="Transit Distance" value={distance} onChange={(e) => setDistance(e.target.value)} required />
+          <Input label="Walking Time" value={walkingTimeText} onChange={(e) => setWalkingTimeText(e.target.value)} required />
+        </div>
+
         <Input label="Listing Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--border-color-light)', paddingTop: '10px' }}>
+          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>House Rules</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+            {['No smoking', 'No loud music after 10 PM', 'No opposite gender guests overnight', 'Pets not allowed', 'No alcohol allowed'].map((r) => (
+              <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={rules.includes(r)} onChange={() => toggleRule(r)} style={{ accentColor: 'var(--brand-coral)' }} />
+                {r}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div style={{ display: 'flex', justifySelf: 'stretch', gap: '12px', borderTop: '1px solid var(--border-color-light)', paddingTop: '16px' }}>
           <Button type="button" variant="outline" fullWidth onClick={onCancel}>Cancel</Button>

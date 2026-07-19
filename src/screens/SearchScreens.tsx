@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Property } from '../mockData';
 import { initialColleges } from '../mockData';
 import { PropertyCard, Button, StarRating, Badge, Avatar, Input } from '../components/UI';
 import { useAuth } from '../context/AuthContext';
 import { 
   Search as SearchIcon, SlidersHorizontal, ArrowLeft, Share2, 
-  Heart, CheckCircle, Compass, X, MessageSquare
+  Heart, CheckCircle, Compass, X, MessageSquare, PlayCircle, Award, Building
 } from 'lucide-react';
 
 // Shared Filter state type
@@ -512,6 +512,74 @@ export const FilterDrawer: React.FC<{
   );
 };
 
+// ================= 360 PANORAMA VIEWER COMPONENT =================
+const PanoramaViewer: React.FC<{ imageUrl?: string }> = ({ imageUrl }) => {
+  const [xOffset, setXOffset] = useState(0);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    startX.current = e.clientX - xOffset;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const x = e.clientX - startX.current;
+    setXOffset(x);
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  const panoImg = imageUrl || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1600&q=80';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Award size={16} color="var(--brand-coral)" />
+        Interactive 360° Room Tour
+      </h4>
+      <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Click and drag left or right to inspect the room layout</p>
+      <div
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={(e) => {
+          isDragging.current = true;
+          startX.current = e.touches[0].clientX - xOffset;
+        }}
+        onTouchMove={(e) => {
+          if (!isDragging.current) return;
+          const x = e.touches[0].clientX - startX.current;
+          setXOffset(x);
+        }}
+        onTouchEnd={handleMouseUp}
+        style={{
+          width: '100%',
+          height: '200px',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          backgroundImage: `url(${panoImg})`,
+          backgroundPosition: `${xOffset}px center`,
+          backgroundRepeat: 'repeat-x',
+          backgroundSize: 'auto 100%',
+          cursor: 'grab',
+          position: 'relative',
+          border: '1px solid var(--border-color-light)',
+          userSelect: 'none'
+        }}
+      >
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(0,0,0,0.5)', color: '#ffffff', padding: '6px 12px', borderRadius: '20px', fontSize: '10px', fontWeight: 600, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span>↔ Drag to look around</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ================= 4. ROOM DETAILS SCREEN =================
 export const RoomDetailsScreen: React.FC<{
   property: Property;
@@ -692,18 +760,28 @@ export const RoomDetailsScreen: React.FC<{
                 <Badge variant="coral">{property.gender}</Badge>
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'Outfit' }}>{property.title}</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-                {property.distanceText} from {property.collegeName}
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                <span>📍 {property.distanceText || property.distance} from {property.collegeName || property.college}</span>
+                {property.walkingTimeText && (
+                  <span style={{ color: 'var(--brand-coral)', fontWeight: 600 }}>• 🚶 {property.walkingTimeText}</span>
+                )}
               </p>
-            </div>
-            
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--brand-coral)' }}>₹{property.price.toLocaleString()}</span>
-              <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>per month</p>
             </div>
           </div>
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--border-color-light)' }} />
+
+          {/* Pricing split card */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)', textAlign: 'left', border: '1px solid var(--border-color-light)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Monthly Rent</span>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--brand-coral)', marginTop: '4px' }}>₹{property.price.toLocaleString()}</h3>
+            </div>
+            <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)', textAlign: 'left', border: '1px solid var(--border-color-light)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Security Deposit</span>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>₹{(property.deposit || (property.price * 2)).toLocaleString()}</h3>
+            </div>
+          </div>
 
           {/* Quick Metrics */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center' }}>
@@ -723,6 +801,24 @@ export const RoomDetailsScreen: React.FC<{
             </div>
           </div>
 
+          {/* Video Walkthrough (HTML5 player) */}
+          {property.videoUrl && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <PlayCircle size={16} color="var(--brand-coral)" />
+                Video Walkthrough
+              </h4>
+              <video 
+                src={property.videoUrl} 
+                controls 
+                style={{ width: '100%', borderRadius: '16px', border: '1px solid var(--border-color-light)', maxHeight: '200px', backgroundColor: '#000000' }} 
+              />
+            </div>
+          )}
+
+          {/* 360 Panorama Tour (Drag left/right) */}
+          <PanoramaViewer imageUrl={property.tour360Url} />
+
           {/* Description */}
           <div>
             <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>About this accommodation</h4>
@@ -739,6 +835,48 @@ export const RoomDetailsScreen: React.FC<{
                   <span>{amenity}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* House Rules */}
+          {property.rules && property.rules.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>House Guidelines</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {property.rules.map((rule) => (
+                  <span key={rule} style={{ padding: '6px 12px', borderRadius: '20px', backgroundColor: 'rgba(255, 69, 58, 0.05)', color: 'var(--brand-coral)', fontSize: '11.5px', fontWeight: 500 }}>
+                    ⚠️ {rule}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Google Maps Coordinates Frame */}
+          <div>
+            <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Building size={16} color="var(--brand-blue)" />
+              Listing Location
+            </h4>
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '180px', 
+                borderRadius: '16px', 
+                overflow: 'hidden', 
+                position: 'relative', 
+                border: '1px solid var(--border-color-light)'
+              }}
+            >
+              <iframe
+                title="Google Maps Coordinates View"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                src="https://maps.google.com/maps?q=18.5204,73.8567&t=&z=14&ie=UTF8&iwloc=&output=embed"
+              ></iframe>
             </div>
           </div>
 
