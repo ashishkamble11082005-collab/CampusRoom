@@ -9,6 +9,9 @@ export interface IUser extends Document {
   phoneNumber?: string;
   kycStatus: 'none' | 'pending' | 'approved' | 'rejected';
   isEmailVerified: boolean;
+  aadhaarNumber?: string;
+  panNumber?: string;
+  isBlueVerified: boolean;
   emailVerificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -26,6 +29,9 @@ const UserSchema = new Schema<IUser>({
   phoneNumber: { type: String, trim: true },
   kycStatus: { type: String, required: true, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
   isEmailVerified: { type: Boolean, default: false },
+  aadhaarNumber: { type: String, trim: true },
+  panNumber: { type: String, trim: true },
+  isBlueVerified: { type: Boolean, default: false },
   emailVerificationToken: { type: String },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },

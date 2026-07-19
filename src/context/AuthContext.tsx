@@ -6,6 +6,8 @@ export interface UserProfile {
   email: string;
   role: 'Student' | 'Landlord' | 'Admin';
   isEmailVerified: boolean;
+  kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  isBlueVerified?: boolean;
 }
 
 interface AuthContextType {

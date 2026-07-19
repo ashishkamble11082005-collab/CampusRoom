@@ -18,6 +18,8 @@ export interface IProperty extends Document {
   gender: 'Boys only' | 'Girls only' | 'Co-ed';
   amenities: string[];
   images: string[];
+  videoUrl?: string;
+  callsCount: number;
   isVerified: boolean;
   averageRating: number;
   reviewsCount: number;
@@ -43,6 +45,8 @@ const PropertySchema = new Schema<IProperty>({
   gender: { type: String, required: true, enum: ['Boys only', 'Girls only', 'Co-ed'] },
   amenities: [{ type: String }],
   images: [{ type: String }],
+  videoUrl: { type: String, default: '' },
+  callsCount: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false, index: true },
   averageRating: { type: Number, default: 0.0 },
   reviewsCount: { type: Number, default: 0 }

@@ -198,28 +198,7 @@ function AppContent() {
     }
   };
 
-  // Landlord Actions
-  const handleAddRoom = (newRoom: Omit<Property, 'id' | 'rating' | 'reviewsCount' | 'isVerified' | 'coordinates'>) => {
-    const freshProperty: Property = {
-      ...newRoom,
-      id: `p_${Date.now()}`,
-      rating: 5.0,
-      reviewsCount: 0,
-      isVerified: false, // Must be approved by Admin!
-      coordinates: { x: 35 + Math.random() * 30, y: 35 + Math.random() * 30 }
-    };
-    setProperties([freshProperty, ...properties]);
-    setCurrentScreen('ownerDashboard');
-  };
 
-  const handleSaveRoom = (updated: Property) => {
-    setProperties(properties.map(p => p.id === updated.id ? updated : p));
-    setCurrentScreen('ownerDashboard');
-  };
-
-  const handleDeleteRoom = (id: string) => {
-    setProperties(properties.filter(p => p.id !== id));
-  };
 
   // Admin Actions
   const handleApproveProperty = (id: string) => {
@@ -437,10 +416,8 @@ function AppContent() {
         return (
           <ProtectedRoute allowedRoles={['Landlord', 'Admin']} fallbackScreen={() => setCurrentScreen('login')}>
             <OwnerDashboardScreen
-              properties={properties}
               onNavigateToAddRoom={() => setCurrentScreen('addRoom')}
               onNavigateToEditRoom={(p) => { setSelectedProperty(p); setCurrentScreen('editRoom'); }}
-              onDeleteRoom={handleDeleteRoom}
             />
           </ProtectedRoute>
         );
@@ -448,7 +425,6 @@ function AppContent() {
         return (
           <ProtectedRoute allowedRoles={['Landlord', 'Admin']} fallbackScreen={() => setCurrentScreen('login')}>
             <AddRoomScreen 
-              onAddRoom={handleAddRoom} 
               onCancel={() => setCurrentScreen('ownerDashboard')} 
             />
           </ProtectedRoute>
@@ -459,7 +435,6 @@ function AppContent() {
             {selectedProperty ? (
               <EditRoomScreen
                 property={selectedProperty}
-                onSaveRoom={handleSaveRoom}
                 onCancel={() => setCurrentScreen('ownerDashboard')}
               />
             ) : (

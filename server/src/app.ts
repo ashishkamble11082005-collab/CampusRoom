@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes';
 import propertyRoutes from './routes/propertyRoutes';
 import studentRoutes from './routes/studentRoutes';
 import chatRoutes from './routes/chatRoutes';
+import ownerRoutes from './routes/ownerRoutes';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/student', studentRoutes);
 app.use('/api/v1/chats', chatRoutes);
+app.use('/api/v1/owner', ownerRoutes);
 
 // 6. Base / Health check route
 app.get('/', (req: Request, res: Response) => {
